@@ -124,8 +124,10 @@ fn rejects_a_checkout_under_a_non_utf8_path() {
     let scratch = Scratch::new("non-utf8");
     let dir = scratch.0.join(std::ffi::OsStr::from_bytes(b"craft-fonts-\xff"));
     // Filesystems such as macOS APFS reject non-UTF-8 paths at creation time (EILSEQ).
-    if std::fs::create_dir_all(dir.join("fonts")).is_err() {
-        return;
+    match std::fs::create_dir_all(dir.join("fonts")) {
+        Ok(()) => {}
+        Err(e) if matches!(e.raw_os_error(), Some(84 | 92)) || e.kind() == std::io::ErrorKind::InvalidInput => return,
+        Err(e) => panic!("creating non-UTF-8 test directory failed: {e}"),
     }
     std::fs::copy(fixture().join("fonts/sans-arabic/SansArabic.ttf"), dir.join("fonts/a.ttf")).unwrap();
     std::fs::write(dir.join("fonts/manifest.txt"), "A | Regular | fonts/a.ttf | Arab | OFL-1.1 | OFL.txt | 00 | src\n").unwrap();
